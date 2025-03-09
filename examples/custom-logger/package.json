@@ -1,0 +1,13 @@
+{
+  "name": "mongozen-custom-logger-example",
+  "version": "1.0.0",
+  "description": "Custom logger example for MongoZen ODM",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mongodb": "^5.0.0"
+  },
+  "private": true
+}
