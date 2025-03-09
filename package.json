@@ -1,0 +1,20 @@
+{
+  "name": "mongozen",
+  "version": "1.0.0",
+  "description": "A simple MongoDB ODM using the official MongoDB Node.js driver",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mongodb",
+    "odm",
+    "database"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mongodb": "^5.0.0"
+  }
+}
