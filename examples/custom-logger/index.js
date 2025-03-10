@@ -20,8 +20,8 @@ async function run() {
   
   // Define a schema
   const userSchema = new mongoZen.Schema({
-    name: { type: mongoZen.SchemaTypes.String, required: true },
-    email: { type: mongoZen.SchemaTypes.String, required: true }
+    name: { type: String, required: true },
+    email: { type: String, required: true }
   });
 
   // Create a model

@@ -40,78 +40,11 @@ function MongoZen(options = {}) {
   // Expose Schema constructor directly
   this.Schema = Schema;
   
-  // Expose schema types
-  this.SchemaTypes = Schema.SchemaTypes;
-  
-  /**
-   * Connect to MongoDB
-   * @param {string} uri - MongoDB connection string
-   * @param {string} dbName - Database name
-   * @param {Object} connectionOptions - MongoDB connection options
-   * @returns {Promise<Object>} - MongoDB database instance
-   */
-  this.connect = (uri, dbName, connectionOptions = {}) => {
-    this.logger.debug('Attempting to connect to MongoDB');
-    // Filter out non-MongoDB options before passing to connect
-    const mongoOptions = { ...connectionOptions };
-    // Remove our custom options that shouldn't be passed to MongoDB client
-    delete mongoOptions.logLevel;
-    delete mongoOptions.logger;
-    
-    return this.connection.connect(uri, dbName, mongoOptions);
-  };
-  
-  /**
-   * Set the log level
-   * @param {string} level - Log level (debug, info, warn, error)
-   * @returns {boolean} - True if log level was set successfully
-   */
-  this.setLogLevel = (level) => {
-    if (!level || typeof level !== 'string') {
-      this.logger.warn('Invalid log level provided');
-      return false;
-    }
-    
-    const validLevels = ['error', 'warn', 'info', 'debug'];
-    if (!validLevels.includes(level.toLowerCase())) {
-      this.logger.warn(`Invalid log level: ${level}. Valid levels are: ${validLevels.join(', ')}`);
-      return false;
-    }
-    
-    // Use setLevel method if available, otherwise set property directly
-    if (typeof this.logger.setLevel === 'function') {
-      const result = this.logger.setLevel(level.toLowerCase());
-      if (result) {
-        this.logger.info(`Changed log level to ${level}`);
-      }
-      return result;
-    } else {
-      this.logger.info(`Changing log level from ${this.logger.level} to ${level}`);
-      this.logger.level = level.toLowerCase();
-      return true;
-    }
-  };
-  
   /**
    * Get the current logger instance
    * @returns {Object} - Winston logger instance
    */
   this.getLogger = () => this.logger;
-  
-  /**
-   * Get the MongoDB database instance
-   * @returns {Object} - MongoDB database instance
-   */
-  this.getDb = () => this.connection.getDb();
-  
-  /**
-   * Close the MongoDB connection
-   * @returns {Promise<void>}
-   */
-  this.close = () => {
-    this.logger.debug('Closing MongoDB connection');
-    return this.connection.close();
-  };
   
   /**
    * Expose Model constructor directly
@@ -132,6 +65,64 @@ function MongoZen(options = {}) {
     });
   };
 }
+
+/**
+ * Connect to MongoDB
+ * @param {string} uri - MongoDB connection string
+ * @param {string} dbName - Database name
+ * @param {Object} connectionOptions - MongoDB connection options
+ * @returns {Promise<Object>} - MongoDB database instance
+ */
+MongoZen.prototype.connect = async function(uri, dbName, connectionOptions = {}) {
+  this.logger.debug('Attempting to connect to MongoDB');
+  // Filter out non-MongoDB options before passing to connect
+  const mongoOptions = { ...connectionOptions };
+  // Remove our custom options that shouldn't be passed to MongoDB client
+  delete mongoOptions.logLevel;
+  delete mongoOptions.logger;
+  
+  return await this.connection.connect(uri, dbName, mongoOptions);
+};
+
+/**
+ * Set the log level
+ * @param {string} level - Log level (debug, info, warn, error)
+ * @returns {boolean} - True if log level was set successfully
+ */
+MongoZen.prototype.setLogLevel = function(level) {
+  if (!level || typeof level !== 'string') {
+    this.logger.warn('Invalid log level provided');
+    return false;
+  }
+  
+  const validLevels = ['error', 'warn', 'info', 'debug'];
+  if (!validLevels.includes(level.toLowerCase())) {
+    this.logger.warn(`Invalid log level: ${level}. Valid levels are: ${validLevels.join(', ')}`);
+    return false;
+  }
+  
+  // Use setLevel method if available, otherwise set property directly
+  if (typeof this.logger.setLevel === 'function') {
+    const result = this.logger.setLevel(level.toLowerCase());
+    if (result) {
+      this.logger.info(`Changed log level to ${level}`);
+    }
+    return result;
+  } else {
+    this.logger.info(`Changing log level from ${this.logger.level} to ${level}`);
+    this.logger.level = level.toLowerCase();
+    return true;
+  }
+};
+
+/**
+ * Close the MongoDB connection
+ * @returns {Promise<void>}
+ */
+MongoZen.prototype.close = async function() {
+  this.logger.debug('Closing MongoDB connection');
+  return await this.connection.close();
+};
 
 // Export the MongoZen constructor
 module.exports = MongoZen;

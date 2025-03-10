@@ -9,30 +9,26 @@ const mongoZen = new MongoZen({ logLevel: 'info' });
 
 // Define a user schema
 const userSchema = new mongoZen.Schema({
-  name: {
-    type: mongoZen.SchemaTypes.String,
-    required: true
-  },
+  name: String,
   email: {
-    type: mongoZen.SchemaTypes.String,
+    type: String,
     required: true,
-    validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-    message: 'Invalid email format'
+    validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
   },
   age: {
-    type: mongoZen.SchemaTypes.Number,
+    type: Number,
     default: 18
   },
   isActive: {
-    type: mongoZen.SchemaTypes.Boolean,
+    type: Boolean,
     default: true
   },
   createdAt: {
-    type: mongoZen.SchemaTypes.Date,
+    type: Date,
     default: () => new Date()
   },
   tags: {
-    type: mongoZen.SchemaTypes.Array,
+    type: Array,
     default: []
   }
 });
@@ -53,7 +49,7 @@ async function runExample() {
       name: 'John Doe',
       email: 'john@example.com',
       age: 30,
-      tags: ['customer', 'premium']
+      tags: ['customer', 'premium'],
     });
     console.log('User created:', newUser);
     

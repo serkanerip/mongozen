@@ -1,16 +1,19 @@
 /**
  * Schema types for validation
  */
-const SchemaTypes = {
-  String: { type: 'string', validate: (val) => typeof val === 'string' },
-  Number: { type: 'number', validate: (val) => typeof val === 'number' && !isNaN(val) },
-  Boolean: { type: 'boolean', validate: (val) => typeof val === 'boolean' },
-  Date: { type: 'date', validate: (val) => val instanceof Date && !isNaN(val) },
-  ObjectId: { type: 'objectId', validate: (val) => /^[0-9a-fA-F]{24}$/.test(val.toString()) },
-  Array: { type: 'array', validate: (val) => Array.isArray(val) },
-  Object: { type: 'object', validate: (val) => typeof val === 'object' && val !== null && !Array.isArray(val) },
-  Mixed: { type: 'mixed', validate: () => true } // Mixed type accepts any value
-};
+
+const DefaultValidations = {
+  ObjectId: (val) => /^[0-9a-fA-F]{24}$/.test(val.toString()),
+  Buffer: (val) => Buffer.isBuffer(val),
+  Map: (val) => val instanceof Map,
+  BigInt: (val) => typeof val === 'bigint',
+  String: (val) => typeof val === 'string',
+  Number: (val) => typeof val === 'number' && !isNaN(val),
+  Boolean: (val) => typeof val === 'boolean',
+  Date: (val) => val instanceof Date && !isNaN(val),
+  Array: (val) => Array.isArray(val),
+  Mixed: () => true
+}
 
 /**
  * Schema constructor function
@@ -29,73 +32,42 @@ function Schema(definition, options = {}) {
   
   // Use the provided logger
   this.logger = options.logger;
-  
-  // Instance reference to SchemaTypes
-  this.SchemaTypes = SchemaTypes;
-  /**
-   * Validate a document against the schema
-   * @param {Object} doc - Document to validate
-   * @returns {Object} - Validation result with isValid and errors
-   */
-    
-    /**
-     * Validate a document against the schema
-     * @param {Object} doc - Document to validate
-     * @returns {Object} - Validation result with isValid and errors
-     */
-  this.validate = function(doc) {
-    const errors = [];
-    
-    // Check each field in the schema
-    Object.keys(this.definition).forEach(field => {
-      const fieldDef = this.definition[field];
-      const value = doc[field];
-      
-      // Check if required field is missing
-      if (fieldDef.required && (value === undefined || value === null)) {
-        errors.push({ field, message: `Field '${field}' is required` });
-        return;
+
+  function validateDefinition(def) {
+    Object.keys(def).forEach(field => {
+      const fieldDef = def[field];
+      if (fieldDef === undefined || fieldDef === null) {
+        throw new Error(`Definition cannot be undefined or null`);
       }
       
-      // Skip validation if value is undefined/null and not required
-      if (value === undefined || value === null) {
-        return;
+      const fieldDefObj = Object.assign(typeof fieldDef === 'object' ? fieldDef : { type: fieldDef }, {
+        type: 'Mixed',
+        required: false,
+        default: undefined,
+        validate: undefined
+      });
+      if (typeof fieldDefObj.type === 'function') {
+        fieldDefObj.type = fieldDefObj.type.name;
       }
-      
-      // Get the type definition
-      const typeDef = fieldDef.type || fieldDef;
-      const schemaType = typeof typeDef === 'function' ? typeDef : typeDef.validate;
-      
-      // Validate the field value
-      if (schemaType && !schemaType(value)) {
-        const typeStr = typeof typeDef === 'function' ? typeDef.name : typeDef.type;
-        errors.push({ 
-          field, 
-          message: `Field '${field}' should be of type ${typeStr}, got ${typeof value}` 
-        });
+      if (!Object.keys(DefaultValidations).includes(fieldDefObj.type)) {
+        throw new Error(`Invalid type: ${fieldDefObj.type}`);
       }
-      
-      // Run custom validators if defined
-      if (fieldDef.validate && typeof fieldDef.validate === 'function') {
-        try {
-          const isValid = fieldDef.validate(value);
-          if (!isValid) {
-            errors.push({ 
-              field, 
-              message: fieldDef.message || `Field '${field}' failed custom validation` 
-            });
-          }
-        } catch (error) {
-          errors.push({ field, message: error.message });
+      if (fieldDefObj.validate && typeof fieldDefObj.validate !== 'function') {
+        throw new Error(`Validation function must be a function`);
+      }
+      if (typeof fieldDefObj.required !== 'boolean') {
+        throw new Error(`Required property must be a boolean`);
+      }
+      if (fieldDefObj.default !== undefined && fieldDefObj.default !== null) {
+        if (typeof fieldDefObj.default !== fieldDefObj.type) {
+          throw new Error(`Default value must be of type ${fieldDefObj.type}`);
         }
       }
+      def[field] = fieldDefObj;
     });
-    
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  };
+  }
+
+  validateDefinition(this.definition);
     
   /**
    * Apply default values to a document based on schema
@@ -130,8 +102,63 @@ function Schema(definition, options = {}) {
   }
 }
 
-// Set SchemaTypes as a static property of the Schema constructor
-Schema.SchemaTypes = SchemaTypes;
+/**
+ * Validate a document against the schema
+ * @param {Object} doc - Document to validate
+ * @returns {Object} - Validation result with isValid and errors
+ */
+Schema.prototype.validate = function(doc) {
+  const errors = [];
+  
+  // Check each field in the schema
+  Object.keys(this.definition).forEach(field => {
+    const fieldDef = this.definition[field];
+    const value = doc[field];
+    
+    // Check if required field is missing
+    if (fieldDef.required && (value === undefined || value === null)) {
+      errors.push({ field, message: `Field '${field}' is required` });
+      return;
+    }
+    
+    // Skip validation if value is undefined/null and not required
+    if (value === undefined || value === null) {
+      return;
+    }
+    
+    // Get the type definition
+    const typeDef = fieldDef.type
+    if (typeDef === 'Mixed') {
+      return;
+    }
+    console.log(typeDef)
+    if (!DefaultValidations[typeDef](value)) {
+      errors.push({ 
+        field, 
+        message: `Field '${field}' should be of type ${typeDef}, got ${typeof value}` 
+      });
+    }
+    
+    // Run custom validators if defined
+    if (fieldDef.validate && typeof fieldDef.validate === 'function') {
+      try {
+        const isValid = fieldDef.validate(value);
+        if (!isValid) {
+          errors.push({ 
+            field, 
+            message: fieldDef.message || `Field '${field}' failed custom validation` 
+          });
+        }
+      } catch (error) {
+        errors.push({ field, message: error.message });
+      }
+    }
+  });
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
 
-// Export the Schema constructor with SchemaTypes
 module.exports = Schema;

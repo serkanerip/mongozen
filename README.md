@@ -1,6 +1,6 @@
 # MongoZen
 
-A simple MongoDB Object Document Mapper (ODM) built with the official MongoDB Node.js driver. This lightweight ODM provides schema validation and helpful functions for working with MongoDB collections without using TypeScript or classes. MongoZen includes a flexible logging system with configurable log levels and support for custom loggers.
+A simple MongoDB Object Document Mapper (ODM) built with the official MongoDB Node.js driver. This lightweight ODM provides schema validation and helpful functions for working with MongoDB collections using a prototype-based approach. MongoZen includes a flexible logging system with configurable log levels and support for custom loggers.
 
 ## Features
 
@@ -71,34 +71,33 @@ async function closeConnection() {
 ```javascript
 // Define a user schema
 const userSchema = new mongoZen.Schema({
-  name: {
-    type: mongoZen.SchemaTypes.String,
-    required: true
-  },
+  // You can use native JavaScript types directly
+  name: String,
+  // Or use an object for more configuration
   email: {
-    type: mongoZen.SchemaTypes.String,
+    type: String,
     required: true,
-    validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
-    message: 'Invalid email format'
+    validate: (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
   },
   age: {
-    type: mongoZen.SchemaTypes.Number,
+    type: Number,
     default: 18
   },
   isActive: {
-    type: mongoZen.SchemaTypes.Boolean,
+    type: Boolean,
     default: true
   },
   createdAt: {
-    type: mongoZen.SchemaTypes.Date,
+    type: Date,
     default: () => new Date()
   },
   tags: {
-    type: mongoZen.SchemaTypes.Array,
+    type: Array,
     default: []
   },
+  // Other supported types include: ObjectId, Buffer, Map, BigInt, Mixed
   metadata: {
-    type: mongoZen.SchemaTypes.Object,
+    type: 'Mixed',
     default: {}
   }
 });
@@ -207,23 +206,22 @@ async function aggregateUsers() {
 #### Connection
 
 - `mongoZen.connect(uri, dbName, options)` - Connect to MongoDB
-- `mongoZen.getDb()` - Get the database instance
 - `mongoZen.close()` - Close the connection
 
 #### Logging
 
 - `mongoZen.setLogLevel(level)` - Change the log level (debug, info, warn, error)
-- `mongoZen.getLogger()` - Get the Winston logger instance
+- `mongoZen.getLogger()` - Get the logger instance
 
-#### Schema
+#### Schema and Model
 
-- `mongoZen.createSchema(definition)` - Create a schema
-- `mongoZen.SchemaTypes` - Available schema types
-  - `String`, `Number`, `Boolean`, `Date`, `ObjectId`, `Array`, `Object`, `Mixed`
+- `new mongoZen.Schema(definition)` - Create a schema
+- `new mongoZen.Model(collectionName, schema)` - Create a model
 
-#### Model
+#### Supported Types
 
-- `mongoZen.createModel(collectionName, schema)` - Create a model
+MongoZen supports the following JavaScript native types:
+- `String`, `Number`, `Boolean`, `Date`, `Array`, `ObjectId`, `Buffer`, `Map`, `BigInt`, `Mixed`
 
 #### Model Methods
 
@@ -241,7 +239,6 @@ async function aggregateUsers() {
 - `deleteMany(filter)` - Delete multiple documents
 - `aggregate(pipeline, options)` - Perform aggregation
 - `createIndex(keys, options)` - Create an index
-- `getCollection()` - Get the MongoDB collection instance
 
 ## License
 

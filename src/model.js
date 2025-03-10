@@ -31,8 +31,8 @@ function Model(collectionName, schema, options = {}) {
     throw new Error('Connection instance is required');
   }
   // Get the collection from the database
-  const getCollection = () => {
-    const db = this.connection.getDb();
+  const getCollection = async () => {
+    const db = await this.connection.getDb();
     return db.collection(this.collectionName);
   };
   
@@ -73,7 +73,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Array>} - Array of documents
    */
   this.find = async function(query = {}, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       const { projection, sort, limit, skip } = options;
       
       let cursor = collection.find(query);
@@ -94,7 +94,7 @@ function Model(collectionName, schema, options = {}) {
   this.findById = async function(id) {
       if (!id) return null;
       
-      const collection = getCollection();
+      const collection = await getCollection();
       return collection.findOne({ _id: toObjectId(id) });
     };
     
@@ -105,7 +105,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Object|null>} - Document or null if not found
    */
   this.findOne = async function(query = {}, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       return collection.findOne(query, options);
     };
     
@@ -115,7 +115,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<number>} - Count of matching documents
    */
   this.count = async function(query = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       return collection.countDocuments(query);
     };
     
@@ -125,7 +125,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Object>} - Created document
    */
   this.create = async function(doc) {
-      const collection = getCollection();
+      const collection = await getCollection();
       const preparedDoc = prepareDocument(doc);
       
       const result = await collection.insertOne(preparedDoc);
@@ -142,7 +142,7 @@ function Model(collectionName, schema, options = {}) {
         throw new Error('createMany requires an array of documents');
       }
       
-      const collection = getCollection();
+      const collection = await getCollection();
       const preparedDocs = docs.map(doc => prepareDocument(doc));
       
       const result = await collection.insertMany(preparedDocs);
@@ -163,7 +163,7 @@ function Model(collectionName, schema, options = {}) {
   this.updateById = async function(id, update, options = {}) {
       if (!id) throw new Error('ID is required for updateById');
       
-      const collection = getCollection();
+      const collection = await getCollection();
       const objectId = toObjectId(id);
       
       // If update doesn't use operators like $set, wrap it in $set
@@ -192,7 +192,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Object>} - Update result
    */
   this.updateOne = async function(filter, update, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       
       // If update doesn't use operators like $set, wrap it in $set
       const hasOperators = Object.keys(update).some(key => key.startsWith('$'));
@@ -216,7 +216,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Object>} - Update result
    */
   this.updateMany = async function(filter, update, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       
       // If update doesn't use operators like $set, wrap it in $set
       const hasOperators = Object.keys(update).some(key => key.startsWith('$'));
@@ -240,7 +240,7 @@ function Model(collectionName, schema, options = {}) {
   this.deleteById = async function(id) {
       if (!id) return false;
       
-      const collection = getCollection();
+      const collection = await getCollection();
       const result = await collection.deleteOne({ _id: toObjectId(id) });
       
       return result.deletedCount > 0;
@@ -252,7 +252,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<boolean>} - True if document was deleted
    */
   this.deleteOne = async function(filter) {
-      const collection = getCollection();
+      const collection = await getCollection();
       const result = await collection.deleteOne(filter);
       
       return result.deletedCount > 0;
@@ -264,7 +264,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<number>} - Number of deleted documents
    */
   this.deleteMany = async function(filter) {
-      const collection = getCollection();
+      const collection = await getCollection();
       const result = await collection.deleteMany(filter);
       
       return result.deletedCount;
@@ -277,7 +277,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<Array>} - Aggregation results
    */
   this.aggregate = async function(pipeline, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       return collection.aggregate(pipeline, options).toArray();
   };
     
@@ -288,7 +288,7 @@ function Model(collectionName, schema, options = {}) {
    * @returns {Promise<string>} - Index name
    */
   this.createIndex = async function(keys, options = {}) {
-      const collection = getCollection();
+      const collection = await getCollection();
       return collection.createIndex(keys, options);
   };
     
