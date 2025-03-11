@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha test/**/*.test.js",
+    "test:unit": "mocha test/unit/**/*.test.js",
+    "test:integration": "mocha test/integration/**/*.test.js",
+    "coverage": "nyc mocha"
   },
   "keywords": [
     "mongodb",
@@ -16,5 +19,12 @@
   "license": "MIT",
   "dependencies": {
     "mongodb": "^5.0.0"
+  },
+  "devDependencies": {
+    "chai": "^5.2.0",
+    "mocha": "^11.1.0",
+    "mongodb-memory-server": "^10.1.4",
+    "nyc": "^17.1.0",
+    "sinon": "^19.0.2"
   }
 }
