@@ -1,6 +1,6 @@
 {
   "name": "mongozen",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "A simple MongoDB ODM using the official MongoDB Node.js driver",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
