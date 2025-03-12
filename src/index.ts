@@ -1,8 +1,6 @@
 // Main entry point for the MongoZen ODM library
 
-// Export the main MongoZen class as default export
-import MongoZen from './mongozen.js';
-export default MongoZen;
+export { MongoZen } from './mongozen.js';
 
 // Export individual components for direct usage
 export { Connection } from './connection.js';
