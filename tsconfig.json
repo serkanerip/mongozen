@@ -1,0 +1,11 @@
+{
+  "extends": "@tsconfig/node22/tsconfig.json",
+  "compilerOptions": {
+    "outDir": "lib",
+    "rootDir": "./src",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "src/**/*.test.ts"]
+}

@@ -1,4 +1,4 @@
-const MongoZen = require('../../src');
+const MongoZen = require('../../src/index');
 
 // Create a MongoZen instance with default console logger
 const mongoZen = new MongoZen({ logLevel: 'info' });

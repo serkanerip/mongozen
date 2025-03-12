@@ -1,33 +1,47 @@
-/**
- * Schema types for validation
- */
+import { Logger } from './types.js';
+import { SchemaDefinition, SchemaField } from './types.js';
 
-const DefaultValidations = {
-  ObjectId: (val) => /^[0-9a-fA-F]{24}$/.test(val.toString()),
-  Buffer: (val) => Buffer.isBuffer(val),
-  Map: (val) => val instanceof Map,
-  BigInt: (val) => typeof val === 'bigint',
-  String: (val) => typeof val === 'string',
-  Number: (val) => typeof val === 'number' && !isNaN(val),
-  Boolean: (val) => typeof val === 'boolean',
-  Date: (val) => val instanceof Date && !isNaN(val),
-  Array: (val) => Array.isArray(val),
-  Mixed: () => true
+interface ValidationResult {
+  isValid: boolean;
+  errors: Array<{ field: string; message: string }>;
 }
+
+interface SchemaOptions {
+  logger?: Logger;
+  [key: string]: any;
+}
+
+/**
+ * Default validation functions for different types
+ */
+const DefaultValidations: Record<string, (val: any) => boolean> = {
+  ObjectId: (val: any) => /^[0-9a-fA-F]{24}$/.test(val.toString()),
+  Buffer: (val: any) => Buffer.isBuffer(val),
+  Map: (val: any) => val instanceof Map,
+  BigInt: (val: any) => typeof val === 'bigint',
+  String: (val: any) => typeof val === 'string',
+  Number: (val: any) => typeof val === 'number' && !isNaN(val),
+  Boolean: (val: any) => typeof val === 'boolean',
+  Date: (val: any) => val instanceof Date && !isNaN(val.getTime()),
+  Array: (val: any) => Array.isArray(val),
+  Mixed: () => true
+};
 
 /**
  * Schema class for defining document structure and validation rules
  */
-class Schema {
-  #options;
-  #logger;
-  
+export class Schema {
+  private options: SchemaOptions;
+  private logger: Logger | undefined;
+  public definition: SchemaDefinition;
+  public originalDefinition: SchemaDefinition;
+
   /**
    * Create a new Schema instance
-   * @param {Object} definition - Schema definition
-   * @param {Object} options - Schema options
+   * @param definition - Schema definition
+   * @param options - Schema options
    */
-  constructor(definition, options = {}) {
+  constructor(definition: SchemaDefinition, options: SchemaOptions = {}) {
     if (!definition) {
       throw new Error('Schema definition is required');
     }
@@ -36,30 +50,30 @@ class Schema {
     }
     
     // Store instance options and definition
-    this.#options = options;
+    this.options = options;
     this.originalDefinition = definition; // Store the original definition
     this.definition = {};
     
     // Use the provided logger
-    this.#logger = options.logger;
+    this.logger = options.logger;
     
     // Process the definition
-    this.definition = this.#processDefinition(definition);
+    this.definition = this.processDefinition(definition);
     
     // Log schema creation if logger is available
-    if (this.#logger) {
-      this.#logger.debug('Schema created');
+    if (this.logger) {
+      this.logger.debug('Schema created');
     }
   }
   
   /**
    * Process and validate the schema definition
-   * @param {Object} def - Schema definition to process
-   * @returns {Object} - Processed definition
+   * @param def - Schema definition to process
+   * @returns Processed definition
    * @private
    */
-  #processDefinition(def) {
-    const processed = {};
+  private processDefinition(def: SchemaDefinition): SchemaDefinition {
+    const processed: SchemaDefinition = {};
     
     Object.keys(def).forEach(field => {
       let fieldDef = def[field];
@@ -100,7 +114,7 @@ class Schema {
           validate: undefined
         },
         typeof fieldDef === 'object' && !Array.isArray(fieldDef) ? fieldDef : { type: fieldDef }
-      );
+      ) as SchemaField;
       
       // Convert function type to string type name
       if (typeof fieldDefObj.type === 'function') {
@@ -108,7 +122,7 @@ class Schema {
       }
       
       // Validate the type
-      if (!Object.keys(DefaultValidations).includes(fieldDefObj.type)) {
+      if (!Object.keys(DefaultValidations).includes(fieldDefObj.type as string)) {
         throw new Error(`Invalid type: ${fieldDefObj.type}`);
       }
       
@@ -131,10 +145,10 @@ class Schema {
   
   /**
    * Apply default values to a document based on schema
-   * @param {Object} doc - Document to apply defaults to
-   * @returns {Object} - Document with defaults applied
+   * @param doc - Document to apply defaults to
+   * @returns Document with defaults applied
    */
-  applyDefaults(doc = {}) {
+  applyDefaults(doc: Record<string, any> = {}): Record<string, any> {
     const result = { ...doc };
     
     Object.keys(this.definition).forEach(field => {
@@ -166,11 +180,11 @@ class Schema {
   
   /**
    * Validate a document against the schema
-   * @param {Object} doc - Document to validate
-   * @returns {Object} - Validation result with isValid and errors
+   * @param doc - Document to validate
+   * @returns Validation result with isValid and errors
    */
-  validate(doc) {
-    const errors = [];
+  validate(doc: Record<string, any>): ValidationResult {
+    const errors: Array<{ field: string; message: string }> = [];
     
     // Check each field in the schema
     Object.keys(this.definition).forEach(field => {
@@ -189,7 +203,7 @@ class Schema {
       }
       
       // Type validation
-      const typeDef = fieldDef.type;
+      const typeDef = fieldDef.type as string;
       if (typeDef !== 'Mixed') {
         if (!DefaultValidations[typeDef](value)) {
           errors.push({ 
@@ -200,50 +214,6 @@ class Schema {
         }
       }
       
-      // Min/max validation for numbers
-      if (typeDef === 'Number') {
-        if (fieldDef.min !== undefined && value < fieldDef.min) {
-          errors.push({ 
-            field, 
-            message: `${field} must be at least ${fieldDef.min}` 
-          });
-        }
-        
-        if (fieldDef.max !== undefined && value > fieldDef.max) {
-          errors.push({ 
-            field, 
-            message: `${field} must be at most ${fieldDef.max}` 
-          });
-        }
-      }
-      
-      // Pattern validation for strings
-      if (typeDef === 'String' && fieldDef.match instanceof RegExp) {
-        if (!fieldDef.match.test(value)) {
-          errors.push({ 
-            field, 
-            message: `${field} does not match pattern` 
-          });
-        }
-      }
-      
-      // Array type validation
-      if (typeDef === 'Array' && fieldDef.arrayType) {
-        // Validate each item in the array
-        for (let i = 0; i < value.length; i++) {
-          const itemType = typeof fieldDef.arrayType === 'function' 
-            ? fieldDef.arrayType.name 
-            : fieldDef.arrayType;
-            
-          if (DefaultValidations[itemType] && !DefaultValidations[itemType](value[i])) {
-            errors.push({ 
-              field, 
-              message: `Item at index ${i} in '${field}' must be of type ${itemType}` 
-            });
-          }
-        }
-      }
-      
       // Run custom validators if defined
       if (fieldDef.validate && typeof fieldDef.validate === 'function') {
         try {
@@ -251,11 +221,11 @@ class Schema {
           if (!isValid) {
             errors.push({ 
               field, 
-              message: fieldDef.message || `Field '${field}' failed custom validation` 
+              message: (fieldDef as any).message || `Field '${field}' failed custom validation` 
             });
           }
         } catch (error) {
-          errors.push({ field, message: error.message });
+          errors.push({ field, message: (error as Error).message });
         }
       }
     });
@@ -268,19 +238,17 @@ class Schema {
   
   /**
    * Get the logger instance
-   * @returns {Object} - Logger instance
+   * @returns Logger instance
    */
-  getLogger() {
-    return this.#logger;
+  getLogger(): Logger | undefined {
+    return this.logger;
   }
   
   /**
    * Get the options
-   * @returns {Object} - Options object
+   * @returns Options object
    */
-  getOptions() {
-    return this.#options;
+  getOptions(): SchemaOptions {
+    return this.options;
   }
 }
-
-module.exports = Schema;

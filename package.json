@@ -2,29 +2,44 @@
   "name": "mongozen",
   "version": "1.0.0",
   "description": "A simple MongoDB ODM using the official MongoDB Node.js driver",
-  "main": "src/index.js",
-  "type": "commonjs",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
   "scripts": {
-    "test": "mocha test/**/*.test.js",
-    "test:unit": "mocha test/unit/**/*.test.js",
-    "test:integration": "mocha test/integration/**/*.test.js",
-    "coverage": "nyc mocha"
+    "build": "tsc",
+    "test": "mocha src/**/*.test.ts",
+    "prepublish": "npm run build"
   },
+  "type": "module",
   "keywords": [
+    "mongo",
     "mongodb",
     "odm",
     "database"
   ],
-  "author": "",
+  "author": "Serkan Erip",
   "license": "MIT",
+  "homepage": "https://github.com/serkanerip/mongozen",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/serkanerip/mongozen.git"
+  },
   "dependencies": {
     "mongodb": "^5.0.0"
   },
   "devDependencies": {
+    "@tsconfig/node22": "^22.0.0",
+    "@types/chai": "^5.2.0",
+    "@types/mocha": "^10.0.10",
+    "@types/mongodb": "^4.0.6",
+    "@types/node": "^22.13.10",
+    "@types/sinon": "^17.0.4",
     "chai": "^5.2.0",
     "mocha": "^11.1.0",
     "mongodb-memory-server": "^10.1.4",
     "nyc": "^17.1.0",
-    "sinon": "^19.0.2"
+    "sinon": "^19.0.2",
+    "source-map-support": "^0.5.21",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
   }
 }

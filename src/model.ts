@@ -1,16 +1,23 @@
-const { ObjectId } = require('mongodb');
+import { Collection, Document, ObjectId } from 'mongodb';
+import { Schema } from './schema.js';
+import { Logger, ModelOptions, QueryOptions, UpdateOptions, AggregationOptions } from './types.js';
 
 /**
  * Model class for MongoDB collections with schema validation
  */
-class Model {
+export class Model {
+  private collectionName: string;
+  private schema: Schema;
+  private logger?: Logger;
+  private connection: any;
+
   /**
    * Create a new Model instance
-   * @param {string} collectionName - Name of the MongoDB collection
-   * @param {Object} schema - Schema object created with Schema constructor
-   * @param {Object} options - Options for the model
+   * @param collectionName - Name of the MongoDB collection
+   * @param schema - Schema object created with Schema constructor
+   * @param options - Options for the model
    */
-  constructor(collectionName, schema, options = {}) {
+  constructor(collectionName: string, schema: Schema, options: ModelOptions = {}) {
     if (!collectionName) {
       throw new Error('Collection name is required');
     }
@@ -20,7 +27,6 @@ class Model {
     }
     
     // Store instance options
-    this.options = options;
     this.collectionName = collectionName;
     this.schema = schema;
     
@@ -42,20 +48,19 @@ class Model {
   
   /**
    * Helper to convert string IDs to ObjectId
-   * @param {string|ObjectId} id - ID to convert
-   * @returns {ObjectId|null} - ObjectId instance or null
+   * @param id - ID to convert
+   * @returns ObjectId instance
    */
-  toObjectId(id) {
-    if (!id) return null;
+  toObjectId(id: string | ObjectId): ObjectId {
     return typeof id === 'string' ? new ObjectId(id) : id;
   }
   
   /**
    * Helper to prepare a document before saving
-   * @param {Object} doc - Document to prepare
-   * @returns {Object} - Prepared document
+   * @param doc - Document to prepare
+   * @returns Prepared document
    */
-  prepareDocument(doc) {
+  prepareDocument(doc: Record<string, any>): Record<string, any> {
     // Apply defaults
     const preparedDoc = this.schema.applyDefaults(doc);
     
@@ -77,20 +82,20 @@ class Model {
   
   /**
    * Get the collection from the database
-   * @returns {Promise<Object>} - MongoDB collection
+   * @returns MongoDB collection
    */
-  async getCollection() {
+  async getCollection(): Promise<Collection> {
     const db = await this.connection.getDb();
     return db.collection(this.collectionName);
   }
   
   /**
    * Find documents in the collection
-   * @param {Object} query - MongoDB query
-   * @param {Object} options - Query options (projection, sort, limit, skip)
-   * @returns {Promise<Array>} - Array of documents
+   * @param query - MongoDB query
+   * @param options - Query options (projection, sort, limit, skip)
+   * @returns Array of documents
    */
-  async find(query = {}, options = {}) {
+  async find(query: Document = {}, options: QueryOptions = {}): Promise<Document[]> {
     const collection = await this.getCollection();
     const { projection, sort, limit, skip } = options;
     
@@ -106,43 +111,41 @@ class Model {
   
   /**
    * Find a single document by ID
-   * @param {string|ObjectId} id - Document ID
-   * @returns {Promise<Object|null>} - Document or null if not found
+   * @param id - Document ID
+   * @returns Document or null if not found
    */
-  async findById(id) {
-    if (!id) return null;
-    
+  async findById(id: string | ObjectId): Promise<Document | null> {
     const collection = await this.getCollection();
     return collection.findOne({ _id: this.toObjectId(id) });
   }
   
   /**
    * Find a single document by query
-   * @param {Object} query - MongoDB query
-   * @param {Object} options - Query options (projection)
-   * @returns {Promise<Object|null>} - Document or null if not found
+   * @param query - MongoDB query
+   * @param options - Query options (projection)
+   * @returns Document or null if not found
    */
-  async findOne(query = {}, options = {}) {
+  async findOne(query: Document = {}, options: QueryOptions = {}): Promise<Document | null> {
     const collection = await this.getCollection();
     return collection.findOne(query, options);
   }
   
   /**
    * Count documents in the collection
-   * @param {Object} query - MongoDB query
-   * @returns {Promise<number>} - Count of matching documents
+   * @param query - MongoDB query
+   * @returns Count of matching documents
    */
-  async count(query = {}) {
+  async count(query: Document = {}): Promise<number> {
     const collection = await this.getCollection();
     return collection.countDocuments(query);
   }
   
   /**
    * Create a new document
-   * @param {Object} doc - Document to create
-   * @returns {Promise<Object>} - Created document
+   * @param doc - Document to create
+   * @returns Created document
    */
-  async create(doc) {
+  async create(doc: Record<string, any>): Promise<Document> {
     const collection = await this.getCollection();
     const preparedDoc = this.prepareDocument(doc);
     
@@ -152,10 +155,10 @@ class Model {
   
   /**
    * Create multiple documents
-   * @param {Array} docs - Array of documents to create
-   * @returns {Promise<Array>} - Array of created documents
+   * @param docs - Array of documents to create
+   * @returns Array of created documents
    */
-  async createMany(docs) {
+  async createMany(docs: Record<string, any>[]): Promise<Document[]> {
     if (!Array.isArray(docs)) {
       throw new Error('createMany requires an array of documents');
     }
@@ -173,12 +176,17 @@ class Model {
   
   /**
    * Update a document by ID
-   * @param {string|ObjectId} id - Document ID
-   * @param {Object} update - Update operations or replacement document
-   * @param {Object} options - Update options
-   * @returns {Promise<Object>} - Update result
+   * @param id - Document ID
+   * @param update - Update operations or replacement document
+   * @param options - Update options
+   * @returns Update result
    */
-  async updateById(id, update, options = {}) {
+  async updateById(id: string | ObjectId, update: Document, options: UpdateOptions = {}): Promise<{
+    acknowledged: boolean;
+    matchedCount: number;
+    modifiedCount: number;
+    upsertedId: ObjectId | null;
+  }> {
     if (!id) throw new Error('ID is required for updateById');
     
     const collection = await this.getCollection();
@@ -204,12 +212,17 @@ class Model {
   
   /**
    * Update a single document
-   * @param {Object} filter - Filter to find the document
-   * @param {Object} update - Update operations
-   * @param {Object} options - Update options
-   * @returns {Promise<Object>} - Update result
+   * @param filter - Filter to find the document
+   * @param update - Update operations
+   * @param options - Update options
+   * @returns Update result
    */
-  async updateOne(filter, update, options = {}) {
+  async updateOne(filter: Document, update: Document, options: UpdateOptions = {}): Promise<{
+    acknowledged: boolean;
+    matchedCount: number;
+    modifiedCount: number;
+    upsertedId: ObjectId | null;
+  }> {
     const collection = await this.getCollection();
     
     // If update doesn't use operators like $set, wrap it in $set
@@ -228,12 +241,17 @@ class Model {
   
   /**
    * Update multiple documents
-   * @param {Object} filter - Filter to find documents
-   * @param {Object} update - Update operations
-   * @param {Object} options - Update options
-   * @returns {Promise<Object>} - Update result
+   * @param filter - Filter to find documents
+   * @param update - Update operations
+   * @param options - Update options
+   * @returns Update result
    */
-  async updateMany(filter, update, options = {}) {
+  async updateMany(filter: Document, update: Document, options: UpdateOptions = {}): Promise<{
+    acknowledged: boolean;
+    matchedCount: number;
+    modifiedCount: number;
+    upsertedId: ObjectId | null;
+  }> {
     const collection = await this.getCollection();
     
     // If update doesn't use operators like $set, wrap it in $set
@@ -252,12 +270,10 @@ class Model {
   
   /**
    * Delete a document by ID
-   * @param {string|ObjectId} id - Document ID
-   * @returns {Promise<boolean>} - True if document was deleted
+   * @param id - Document ID
+   * @returns True if document was deleted
    */
-  async deleteById(id) {
-    if (!id) return false;
-    
+  async deleteById(id: string | ObjectId): Promise<boolean> {
     const collection = await this.getCollection();
     const result = await collection.deleteOne({ _id: this.toObjectId(id) });
     
@@ -266,10 +282,10 @@ class Model {
   
   /**
    * Delete a single document
-   * @param {Object} filter - Filter to find the document
-   * @returns {Promise<boolean>} - True if document was deleted
+   * @param filter - Filter to find the document
+   * @returns True if document was deleted
    */
-  async deleteOne(filter) {
+  async deleteOne(filter: Document): Promise<boolean> {
     const collection = await this.getCollection();
     const result = await collection.deleteOne(filter);
     
@@ -278,10 +294,10 @@ class Model {
   
   /**
    * Delete multiple documents
-   * @param {Object} filter - Filter to find documents
-   * @returns {Promise<number>} - Number of deleted documents
+   * @param filter - Filter to find documents
+   * @returns Number of deleted documents
    */
-  async deleteMany(filter) {
+  async deleteMany(filter: Document): Promise<number> {
     const collection = await this.getCollection();
     const result = await collection.deleteMany(filter);
     
@@ -290,25 +306,23 @@ class Model {
   
   /**
    * Perform aggregation on the collection
-   * @param {Array} pipeline - Aggregation pipeline
-   * @param {Object} options - Aggregation options
-   * @returns {Promise<Array>} - Aggregation results
+   * @param pipeline - Aggregation pipeline
+   * @param options - Aggregation options
+   * @returns Aggregation results
    */
-  async aggregate(pipeline, options = {}) {
+  async aggregate(pipeline: Document[], options: AggregationOptions = {}): Promise<Document[]> {
     const collection = await this.getCollection();
     return collection.aggregate(pipeline, options).toArray();
   }
   
   /**
    * Create an index on the collection
-   * @param {Object} keys - Index keys
-   * @param {Object} options - Index options
-   * @returns {Promise<string>} - Index name
+   * @param keys - Index keys
+   * @param options - Index options
+   * @returns Index name
    */
-  async createIndex(keys, options = {}) {
+  async createIndex(keys: Document, options: Record<string, any> = {}): Promise<string> {
     const collection = await this.getCollection();
     return collection.createIndex(keys, options);
   }
 }
-
-module.exports = Model;
