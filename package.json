@@ -1,15 +1,30 @@
 {
   "name": "mongozen",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A simple MongoDB ODM using the official MongoDB Node.js driver",
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
+  "types": "lib/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js",
+      "types": "./lib/esm/index.d.ts"
+    }
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:esm && npm run build:cjs && npm run prepare-packages",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "prepare-packages": "node scripts/prepare-packages.js",
     "test": "mocha src/**/*.test.ts",
     "prepublish": "npm run build"
   },
-  "type": "module",
+  "files": [
+    "lib/",
+    "LICENSE",
+    "README.md"
+  ],
   "keywords": [
     "mongo",
     "mongodb",
