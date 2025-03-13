@@ -10,7 +10,6 @@ import { Logger, MongoZenOptions, SchemaDefinition } from './types.js';
  * MongoZen class - Main entry point for MongoDB ODM functionality
  */
 export class MongoZen {
-  private options: MongoZenOptions;
   private logger: Logger;
   private connection: Connection;
   public Schema: typeof Schema;
@@ -20,9 +19,6 @@ export class MongoZen {
    * @param options - Options for MongoZen
    */
   constructor(options: MongoZenOptions = {}) {
-    // Store instance options
-    this.options = options;
-    
     // Handle logger setup
     if (options.logger) {
       // Check if the provided logger has the required methods

@@ -4,20 +4,18 @@
   "description": "A simple MongoDB ODM using the official MongoDB Node.js driver",
   "main": "lib/cjs/index.js",
   "module": "lib/esm/index.js",
-  "types": "lib/esm/index.d.ts",
+  "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js",
-      "types": "./lib/esm/index.d.ts"
+      "types": "./lib/types/index.d.ts"
     }
   },
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs && npm run prepare-packages",
-    "build:esm": "tsc -p tsconfig.esm.json",
-    "build:cjs": "tsc -p tsconfig.cjs.json",
-    "prepare-packages": "node scripts/prepare-packages.js",
+    "build": "npm run clean && tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json",
     "test": "mocha src/**/*.test.ts",
+    "clean": "rimraf lib",
     "prepublish": "npm run build"
   },
   "files": [
@@ -52,6 +50,7 @@
     "mocha": "^11.1.0",
     "mongodb-memory-server": "^10.1.4",
     "nyc": "^17.1.0",
+    "rimraf": "^6.0.1",
     "sinon": "^19.0.2",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.2",
