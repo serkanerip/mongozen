@@ -1,0 +1,7 @@
+{
+  "reporter": ["html", "lcov", "text", "text-summary"],
+  "include": ["src/**/*.ts"],
+  "extension": [".ts"],
+  "report-dir": "coverage",
+  "all": true
+}
