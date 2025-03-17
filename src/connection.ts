@@ -23,7 +23,7 @@ export class Connection {
    * Get the MongoDB database instance
    * @returns MongoDB database instance
    */
-  async getDb(): Promise<Db> {    
+  async getDb(): Promise<Db> {
     if (!this.db) {
       throw new Error('Database connection not established');
     }
@@ -38,9 +38,7 @@ export class Connection {
     if (this.client) {
       try {
         await this.client.close();
-        if (this.logger) {
-          this.logger.info('MongoDB connection closed');
-        }
+        this.logger.info('MongoDB connection closed');
       } catch (error) {
         throw error;
       } finally {
@@ -67,23 +65,24 @@ export class Connection {
     }
 
     try {
-      if (this.logger) {
-        this.logger.debug('Attempting to connect to MongoDB');
+      this.logger.debug('Attempting to connect to MongoDB');
+
+      const connectionOpsWithDefaults = {
+        ...connectionOptions,
+        connectTimeoutMS: 5000,
+        socketTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 5000
       }
       
       // Filter out non-MongoDB options
-      this.client = new MongoClient(uri, connectionOptions);
+      this.client = new MongoClient(uri, connectionOpsWithDefaults);
       await this.client.connect();
       this.db = this.client.db(dbName);
       
-      if (this.logger) {
-        this.logger.info(`Connected to MongoDB database: ${dbName}`);
-      }
+      this.logger.info(`Connected to MongoDB database: ${dbName}`);
       return this.db;
     } catch (error) {
-      if (this.logger) {
-        this.logger.error(`Failed to connect to MongoDB: ${(error as Error).message}`);
-      }
+      this.logger.error(`Failed to connect to MongoDB: ${(error as Error).message}`);
       throw error;
     }
   }

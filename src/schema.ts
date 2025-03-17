@@ -92,15 +92,10 @@ export class Schema {
         };
         return;
       }
-      
-      // Handle Object type
-      if (fieldDef === Object) {
-        processed[field] = {
-          type: 'Mixed',
-          required: false,
-          default: undefined,
-          validate: undefined
-        };
+
+      // handle sub object type definitions
+      if (typeof fieldDef === 'object' && !Array.isArray(fieldDef) && !Object.hasOwn(fieldDef, 'type')) {
+        processed[field] = this.processDefinition(fieldDef);
         return;
       }
       
@@ -159,6 +154,39 @@ export class Schema {
         return;
       }
       
+      // Handle nested objects/sub-schemas
+      if (typeof fieldDef === 'object' && !Array.isArray(fieldDef) && !fieldDef.type) {
+        // Create empty object for the nested field
+        result[field] = {};
+        
+        // Recursively apply defaults to nested fields
+        Object.keys(fieldDef).forEach(nestedField => {
+          const nestedFieldDef = fieldDef[nestedField];
+          
+          // Apply default if specified for nested field
+          if (nestedFieldDef.default !== undefined) {
+            if (typeof nestedFieldDef.default === 'function') {
+              const defaultValue = nestedFieldDef.default();
+              // Convert timestamp to Date if the field type is Date
+              if (nestedFieldDef.type === 'Date' && typeof defaultValue === 'number') {
+                result[field][nestedField] = new Date(defaultValue);
+              } else {
+                result[field][nestedField] = defaultValue;
+              }
+            } else {
+              result[field][nestedField] = nestedFieldDef.default;
+            }
+          }
+        });
+        
+        // If the nested object is empty (no defaults applied), remove it
+        if (Object.keys(result[field]).length === 0) {
+          delete result[field];
+        }
+        
+        return;
+      }
+      
       // Apply default value if specified
       if (fieldDef.default !== undefined) {
         if (typeof fieldDef.default === 'function') {
@@ -186,14 +214,40 @@ export class Schema {
   validate(doc: Record<string, any>): ValidationResult {
     const errors: Array<{ field: string; message: string }> = [];
     
-    // Check each field in the schema
-    Object.keys(this.definition).forEach(field => {
-      const fieldDef = this.definition[field];
-      const value = doc[field];
+    // Helper function to validate a field against its definition
+    const validateField = (field: string, fieldDef: any, value: any, parentPath = '') => {
+      const fullPath = parentPath ? `${parentPath}.${field}` : field;
+      
+      // Handle nested objects/sub-schemas
+      if (typeof fieldDef === 'object' && !Array.isArray(fieldDef) && !fieldDef.type) {
+        // Skip validation if value is undefined/null
+        if (value === undefined || value === null) {
+          // Check if any nested fields are required
+          Object.keys(fieldDef).forEach(nestedField => {
+            if (fieldDef[nestedField].required) {
+              errors.push({ field: `${fullPath}.${nestedField}`, message: `${fullPath}.${nestedField} is required` });
+            }
+          });
+          return;
+        }
+        
+        // Validate that value is an object
+        if (typeof value !== 'object' || Array.isArray(value)) {
+          errors.push({ field: fullPath, message: `${fullPath} must be an object` });
+          return;
+        }
+        
+        // Validate each nested field
+        Object.keys(fieldDef).forEach(nestedField => {
+          validateField(nestedField, fieldDef[nestedField], value[nestedField], fullPath);
+        });
+        
+        return;
+      }
       
       // Check if required field is missing
       if (fieldDef.required && (value === undefined || value === null)) {
-        errors.push({ field, message: `${field} is required` });
+        errors.push({ field: fullPath, message: `${fullPath} is required` });
         return;
       }
       
@@ -207,10 +261,124 @@ export class Schema {
       if (typeDef !== 'Mixed') {
         if (!DefaultValidations[typeDef](value)) {
           errors.push({ 
-            field, 
-            message: `${field} must be of type ${typeDef}` 
+            field: fullPath, 
+            message: `${fullPath} must be of type ${typeDef}` 
           });
           return; // Skip further validation if type is wrong
+        }
+      }
+      
+      // Validate enum (for any type)
+      if (fieldDef.enum && !fieldDef.enum.includes(value)) {
+        errors.push({ 
+          field: fullPath, 
+          message: `${fullPath} must be one of: ${fieldDef.enum.join(', ')}` 
+        });
+      }
+      
+      // Validate string constraints
+      if (typeDef === 'String') {
+        // Validate minLength
+        if (fieldDef.minLength !== undefined && value.length < fieldDef.minLength) {
+          errors.push({ 
+            field: fullPath, 
+            message: `${fullPath} must be at least ${fieldDef.minLength} characters long` 
+          });
+        }
+        
+        // Validate maxLength
+        if (fieldDef.maxLength !== undefined && value.length > fieldDef.maxLength) {
+          errors.push({ 
+            field: fullPath, 
+            message: `${fullPath} must be at most ${fieldDef.maxLength} characters long` 
+          });
+        }
+        
+        // Validate pattern
+        if (fieldDef.pattern && !fieldDef.pattern.test(value)) {
+          errors.push({ 
+            field: fullPath, 
+            message: `${fullPath} must match the pattern ${fieldDef.pattern}` 
+          });
+        }
+      }
+      
+      // Validate number constraints
+      if (typeDef === 'Number') {
+        // Validate min
+        if (fieldDef.min !== undefined && value < fieldDef.min) {
+          errors.push({ 
+            field: fullPath, 
+            message: `${fullPath} must be at least ${fieldDef.min}` 
+          });
+        }
+        
+        // Validate max
+        if (fieldDef.max !== undefined && value > fieldDef.max) {
+          errors.push({ 
+            field: fullPath, 
+            message: `${fullPath} must be at most ${fieldDef.max}` 
+          });
+        }
+      }
+      
+      // Validate array items
+      if (typeDef === 'Array' && Array.isArray(value)) {
+        // Handle array with type definition in brackets [{ type: String }]
+        if (Array.isArray(fieldDef.type) && fieldDef.type.length > 0) {
+          const itemDef = fieldDef.type[0];
+          
+          // Validate each item in the array
+          value.forEach((item, index) => {
+            const itemType = itemDef.type as string;
+            
+            // Type validation
+            if (!DefaultValidations[itemType](item)) {
+              errors.push({ 
+                field: `${fullPath}[${index}]`, 
+                message: `${fullPath}[${index}] must be of type ${itemType}` 
+              });
+              return;
+            }
+            
+            // String validation for array items
+            if (itemType === 'String') {
+              // Validate minLength
+              if (itemDef.minLength !== undefined && item.length < itemDef.minLength) {
+                errors.push({ 
+                  field: `${fullPath}[${index}]`, 
+                  message: `${fullPath}[${index}] must be at least ${itemDef.minLength} characters long` 
+                });
+              }
+              
+              // Validate maxLength
+              if (itemDef.maxLength !== undefined && item.length > itemDef.maxLength) {
+                errors.push({ 
+                  field: `${fullPath}[${index}]`, 
+                  message: `${fullPath}[${index}] must be at most ${itemDef.maxLength} characters long` 
+                });
+              }
+            }
+            
+            // Number validation for array items
+            if (itemType === 'Number') {
+              // Validate min
+              if (itemDef.min !== undefined && item < itemDef.min) {
+                errors.push({ 
+                  field: `${fullPath}[${index}]`, 
+                  message: `${fullPath}[${index}] must be at least ${itemDef.min}` 
+                });
+              }
+              
+              // Validate max
+              if (itemDef.max !== undefined && item > itemDef.max) {
+                errors.push({ 
+                  field: `${fullPath}[${index}]`, 
+                  message: `${fullPath}[${index}] must be at most ${itemDef.max}` 
+                });
+              }
+            }
+          });
         }
       }
       
@@ -220,14 +388,19 @@ export class Schema {
           const isValid = fieldDef.validate(value);
           if (!isValid) {
             errors.push({ 
-              field, 
-              message: (fieldDef as any).message || `Field '${field}' failed custom validation` 
+              field: fullPath, 
+              message: (fieldDef as any).message || `Field '${fullPath}' failed custom validation` 
             });
           }
         } catch (error) {
-          errors.push({ field, message: (error as Error).message });
+          errors.push({ field: fullPath, message: (error as Error).message });
         }
       }
+    };
+    
+    // Validate each field in the schema
+    Object.keys(this.definition).forEach(field => {
+      validateField(field, this.definition[field], doc[field]);
     });
     
     return {

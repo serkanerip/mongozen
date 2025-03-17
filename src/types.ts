@@ -29,6 +29,15 @@ export interface SchemaField {
   required?: boolean;
   default?: any;
   validate?: (value: any) => boolean | Promise<boolean>;
+  // String validation constraints
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  enum?: any[];
+  // Number validation constraints
+  min?: number;
+  max?: number;
+  // No additional array validation properties needed
 }
 
 // Schema definition

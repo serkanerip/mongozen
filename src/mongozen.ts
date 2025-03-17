@@ -127,6 +127,14 @@ export class MongoZen {
    * @returns Model instance
    */
   createModel(collectionName: string, schema: Schema): Model {
+    if (!collectionName) {
+      throw new Error('Collection name is required');
+    }
+    
+    if (!schema) {
+      throw new Error('Schema is required');
+    }
+    
     // Log model creation if logger is available
     this.logger.debug(`Creating model for collection: ${collectionName}`);
     

@@ -1,6 +1,7 @@
 {
   "reporter": ["html", "lcov", "text", "text-summary"],
   "include": ["src/**/*.ts"],
+  "exclude": ["test/*/*.test.ts", "src/types.ts", "src/index.ts"],
   "extension": [".ts"],
   "report-dir": "coverage",
   "all": true
